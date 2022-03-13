@@ -57,9 +57,13 @@ public class Runner {
             if (!Files.exists(Path.of(outputFile))) {
                 Files.createFile(Path.of(outputFile));
             }
-            Scanner scannerReader = new Scanner(Files.newBufferedReader(Path.of(inputFile)));
+            FileInputStream fis =  new FileInputStream(inputFile);
+            BufferedReader input = new BufferedReader(new InputStreamReader(fis, "Cp1251"));
+            Scanner scannerReader = new Scanner(input);
+
             BufferedWriter bufferedWriter = Files.newBufferedWriter(Path.of(outputFile), StandardOpenOption.WRITE);
             int encKey = Math.abs(Integer.parseInt(encryptionKey) % Constants.ALPHABET.length);
+
             String line;
 
             while (scannerReader.hasNextLine()) {
@@ -92,6 +96,8 @@ public class Runner {
                     bufferedWriter.write("\r\n");
                 }
             }
+            fis.close();
+            input.close();
             scannerReader.close();
             bufferedWriter.close();
         } else {
@@ -104,9 +110,12 @@ public class Runner {
             if (!Files.exists(Path.of(outputFile))) {
                 Files.createFile(Path.of(outputFile));
             }
+
             Scanner scannerReader = new Scanner(Files.newBufferedReader(Path.of(inputFile)));
+
             BufferedWriter bufferedWriter = Files.newBufferedWriter(Path.of(outputFile), StandardOpenOption.WRITE);
             int encKey = Math.abs(Integer.parseInt(encryptionKey) % Constants.ALPHABET.length);
+
             String line;
 
             while (scannerReader.hasNextLine()) {
