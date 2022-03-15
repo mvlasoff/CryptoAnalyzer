@@ -32,7 +32,7 @@ public class Runner {
             int nextInt = Integer.parseInt(nextLine);
 
             if (nextInt == 1) {
-                System.out.println("Enter input file, output file and encryption key.");
+                System.out.println("Enter input file, output file and encryption key. Press 'Enter' after each input.");
                 String inputFile = scanner.nextLine();
                 String outputFile = scanner.nextLine();
                 String encryptionKey = scanner.nextLine();
@@ -41,12 +41,29 @@ public class Runner {
             }
 
             if (nextInt == 2) {
-                System.out.println("Enter input file, output file and decoding key.");
+                System.out.println("Enter input file, output file and decoding key. Press 'Enter' after each input.");
                 String inputFile = scanner.nextLine();
                 String outputFile = scanner.nextLine();
                 String encryptionKey = scanner.nextLine();
 
                 decodeFile(inputFile, outputFile, encryptionKey);
+            }
+
+            if (nextInt == 3) {
+                System.out.println("Enter input file and output file. Press 'Enter' after each input.");
+                String inputFile = scanner.nextLine();
+                String outputFile = scanner.nextLine();
+
+                bruteForce(inputFile, outputFile);
+            }
+
+            if (nextInt == 4) {
+                System.out.println("Enter input file, output file and reference file. Press 'Enter' after each input.");
+                String inputFile = scanner.nextLine();
+                String outputFile = scanner.nextLine();
+                String refFile = scanner.nextLine();
+
+                statisticsAnalyzer(inputFile, outputFile, refFile);
             }
         }
         scanner.close();
@@ -57,17 +74,15 @@ public class Runner {
             if (!Files.exists(Path.of(outputFile))) {
                 Files.createFile(Path.of(outputFile));
             }
-            FileInputStream fis =  new FileInputStream(inputFile);
-            BufferedReader input = new BufferedReader(new InputStreamReader(fis, "Cp1251"));
-            Scanner scannerReader = new Scanner(input);
 
-            BufferedWriter bufferedWriter = Files.newBufferedWriter(Path.of(outputFile), StandardOpenOption.WRITE);
+            Scanner scanner = new Scanner(Files.newBufferedReader(Path.of(inputFile)));
+            BufferedWriter bufferedWriter = Files.newBufferedWriter(Path.of(outputFile), StandardOpenOption.TRUNCATE_EXISTING);
+
             int encKey = Math.abs(Integer.parseInt(encryptionKey) % Constants.ALPHABET.length);
-
             String line;
 
-            while (scannerReader.hasNextLine()) {
-                line = scannerReader.nextLine();
+            while (scanner.hasNextLine()) {
+                line = scanner.nextLine();
                 char[] chars = line.toCharArray();
                 char[] encryptedChars = new char[chars.length];
                 int alphabetPos = -1, newPos;
@@ -90,15 +105,13 @@ public class Runner {
                         alphabetPos = -1;
                     }
                 }
-                bufferedWriter.write(encryptedChars);
+                bufferedWriter.write(String.valueOf(encryptedChars));
 
-                if (scannerReader.hasNextLine()) {
+                if (scanner.hasNextLine()) {
                     bufferedWriter.write("\r\n");
                 }
             }
-            fis.close();
-            input.close();
-            scannerReader.close();
+            scanner.close();
             bufferedWriter.close();
         } else {
             System.out.println("Check input file. It must exist.");
@@ -112,10 +125,9 @@ public class Runner {
             }
 
             Scanner scannerReader = new Scanner(Files.newBufferedReader(Path.of(inputFile)));
+            BufferedWriter bufferedWriter = Files.newBufferedWriter(Path.of(outputFile), StandardOpenOption.TRUNCATE_EXISTING);
 
-            BufferedWriter bufferedWriter = Files.newBufferedWriter(Path.of(outputFile), StandardOpenOption.WRITE);
             int encKey = Math.abs(Integer.parseInt(encryptionKey) % Constants.ALPHABET.length);
-
             String line;
 
             while (scannerReader.hasNextLine()) {
@@ -131,7 +143,7 @@ public class Runner {
                     for (int j = 0; j < Constants.ALPHABET.length; j++) {
                         if (iChar == Constants.ALPHABET[j]) {
                             newPos = j - encKey;
-                            if (newPos < 0){
+                            if (newPos < 0) {
                                 alphabetPos = newPos + Constants.ALPHABET.length;
                             } else {
                                 alphabetPos = newPos;
@@ -157,5 +169,81 @@ public class Runner {
         } else {
             System.out.println("Check input file. It must exist.");
         }
+    }
+
+    private static void bruteForce(String inputFile, String outputFile) throws IOException {
+        if (Files.exists(Path.of(inputFile))) {
+
+            int encKey = Constants.ALPHABET.length - 1;
+            boolean isEncKeyFound = false;
+
+            while (encKey >= 0 && !isEncKeyFound) {
+
+                if (!Files.exists(Path.of(outputFile))) {
+                    Files.createFile(Path.of(outputFile));
+                }
+
+                Scanner scannerReader = new Scanner(Files.newBufferedReader(Path.of(inputFile)));
+                BufferedWriter bufferedWriter = Files.newBufferedWriter(Path.of(outputFile), StandardOpenOption.TRUNCATE_EXISTING);
+
+                String line;
+
+                while (scannerReader.hasNextLine()) {
+                    line = scannerReader.nextLine();
+                    char[] chars = line.toCharArray();
+                    char[] decodedChars = new char[chars.length];
+                    int alphabetPos = -1, newPos;
+
+                    //move over new line.
+                    for (int i = 0; i < chars.length; i++) {
+                        char iChar = chars[i];
+                        //finding symbol in ALPHABET.
+                        for (int j = 0; j < Constants.ALPHABET.length; j++) {
+                            if (iChar == Constants.ALPHABET[j]) {
+                                newPos = j - encKey;
+                                if (newPos < 0) {
+                                    alphabetPos = newPos + Constants.ALPHABET.length;
+                                } else {
+                                    alphabetPos = newPos;
+                                }
+                                break;
+                            }
+                        }
+                        if (alphabetPos < 0) {
+                            decodedChars[i] = chars[i];
+                        } else {
+                            decodedChars[i] = Constants.ALPHABET[alphabetPos];
+                            alphabetPos = -1;
+                        }
+                    }
+                    bufferedWriter.write(decodedChars);
+
+                    if (scannerReader.hasNextLine()) {
+                        bufferedWriter.write("\r\n");
+                    }
+
+                    //Comparing words in decoded line with dictionary.
+                    if (!isEncKeyFound) {
+                        String string = String.valueOf(decodedChars);
+                        String[] strArray = string.split(" ");
+                        for (String s : strArray) {
+                            if("как".equalsIgnoreCase(s)){
+                                isEncKeyFound = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                scannerReader.close();
+                bufferedWriter.close();
+                encKey--;
+            }
+            System.out.println("Decoded key: " + ++encKey);
+        } else {
+            System.out.println("Check input file. It must exist.");
+        }
+    }
+
+    private static void statisticsAnalyzer(String inputFile, String outputFile, String refFile) {
     }
 }
