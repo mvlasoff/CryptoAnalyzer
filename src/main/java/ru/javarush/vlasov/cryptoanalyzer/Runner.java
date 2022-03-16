@@ -1,17 +1,10 @@
 package ru.javarush.vlasov.cryptoanalyzer;
 
 import java.io.*;
-import java.nio.CharBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 public class Runner {
     public static void main(String[] args) throws IOException {
@@ -244,6 +237,147 @@ public class Runner {
         }
     }
 
-    private static void statisticsAnalyzer(String inputFile, String outputFile, String refFile) {
+    private static void statisticsAnalyzer(String inputFile, String outputFile, String refFile) throws IOException {
+        if (!Files.exists(Path.of(inputFile))) {
+            System.out.println("Input file doesn't exist.");
+            return;
+        }
+        if (!Files.exists(Path.of(refFile))) {
+            System.out.println("Reference file doesn't exist.");
+            return;
+        }
+
+        if (!Files.exists(Path.of(outputFile))) {
+            Files.createFile(Path.of(outputFile));
+        }
+
+        BufferedReader refBR = Files.newBufferedReader(Path.of(refFile));
+        BufferedReader encBR = Files.newBufferedReader(Path.of(inputFile));
+        BufferedWriter bufferedWriter = Files.newBufferedWriter(Path.of(outputFile), StandardOpenOption.TRUNCATE_EXISTING);
+
+        String line;
+        HashMap<Character, Float> refMap = new HashMap<>();
+        HashMap<Character, Float> encMap = new HashMap<>();
+        int refCharCount = 0;
+        int encCharCount = 0;
+
+        for (char ch : Constants.ALPHABET) {
+            refMap.put(ch, 0f);
+            encMap.put(ch, 0f);
+        }
+        Set<Character> characterSet = refMap.keySet();
+
+        //How many of each symbol in reference text.
+        //Scanner refScannerReader = new Scanner(Files.newBufferedReader(Path.of(refFile)));
+        while ((line = refBR.readLine()) != null) {
+            //line = refScannerReader.nextLine();
+            char[] chars = line.toCharArray();
+            //refCharCount = refCharCount + chars.length;
+
+            for (char c : chars) {
+                if (characterSet.contains(c)) {
+                    Float i = refMap.get(c);
+                    i++;
+                    refCharCount++;
+                    refMap.put(c, i);
+                }
+            }
+        }
+        //refScannerReader.close();
+        refBR.close();
+        System.out.println("Reference chars count: " + refCharCount);
+
+        //How many of each symbol in encrypted text.
+        //Scanner encScannerReader = new Scanner(Files.newBufferedReader(Path.of(inputFile)));
+        while ((line = encBR.readLine()) != null) {
+            char[] chars = line.toCharArray();
+            //encCharCount = encCharCount + chars.length;
+
+            for (char c : chars) {
+                if (characterSet.contains(c)) {
+                    Float i = encMap.get(c);
+                    i++;
+                    encCharCount++;
+                    encMap.put(c, i);
+                }
+            }
+        }
+        //encScannerReader.close();
+        encBR.close();
+        System.out.println("Encoded chars count: " + encCharCount);
+
+        //Collecting statistics.
+        for (Character character : characterSet) {
+            Float refF = refMap.get(character);
+            refF = refF / refCharCount * 100;
+            refMap.put(character, refF);
+
+            Float encF = encMap.get(character);
+            encF = encF / encCharCount * 100;
+            encMap.put(character, encF);
+        }
+
+        System.out.println(refMap);
+        System.out.println("-------------------------");
+        System.out.println(encMap);
+
+        float treshold = 2.0F;
+        HashMap<Character, Character> refEncMap = new HashMap<>();
+
+        //Finding 'space'.
+        Float spaceStat = refMap.get(' ');
+        for (Map.Entry<Character, Float> characterFloatEntry : encMap.entrySet()) {
+            Float value = characterFloatEntry.getValue();
+            if (Math.abs(value - spaceStat) < treshold) {
+                refEncMap.put(characterFloatEntry.getKey(), ' ');
+                characterSet.remove(' ');
+                break;
+            }
+        }
+
+        treshold = 0.01F;
+        //Making map of characters reference vs encrypted.
+        while (!characterSet.isEmpty()){
+            Iterator<Character> characterIterator = characterSet.iterator();
+            while(characterIterator.hasNext()){
+                Character nextCh = characterIterator.next();
+                Float rF = refMap.get(nextCh);
+                for (Map.Entry<Character, Float> characterFloatEntry : encMap.entrySet()) {
+                    Float value = characterFloatEntry.getValue();
+                    if (Math.abs(rF - value) < treshold) {
+                        if (!refEncMap.containsKey(characterFloatEntry.getKey())) {
+                            refEncMap.put(characterFloatEntry.getKey(), nextCh);
+                            characterIterator.remove();
+                            break;
+                        }
+                    }
+                }
+            }
+            treshold = treshold + 0.1F;
+        }
+
+        System.out.println("------------------");
+        System.out.println(refEncMap);
+
+        //Reading ecrypted file and swapping chars.
+        Scanner scanner = new Scanner(Files.newBufferedReader(Path.of(inputFile)));
+        while (scanner.hasNext()) {
+            line = scanner.nextLine();
+            char[] chars = line.toCharArray();
+
+            for (int i = 0; i < chars.length; i++) {
+                Character ch = refEncMap.get(chars[i]);
+                if(ch != null) {
+                    chars[i] = ch;
+                }
+            }
+            bufferedWriter.write(chars);
+
+            if (scanner.hasNextLine()) {
+                bufferedWriter.write("\r\n");
+            }
+        }
+        scanner.close();
+        bufferedWriter.close();
     }
 }
