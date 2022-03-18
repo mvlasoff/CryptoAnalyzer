@@ -4,6 +4,8 @@ import java.io.*;
 import java.nio.file.*;
 import java.time.Instant;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Runner {
     public static void main(String[] args) throws IOException {
@@ -22,23 +24,35 @@ public class Runner {
             }
 
             int nextInt = Integer.parseInt(nextLine);
+            int encryptionKey;
 
             if (nextInt == 1) {
                 System.out.println("Enter input file, output file and encryption key. Press 'Enter' after each input.");
                 String inputFile = consoleScanner.nextLine();
                 String outputFile = consoleScanner.nextLine();
-                String encryptionKey = consoleScanner.nextLine();
+                String encryptionKeyString = consoleScanner.nextLine();
 
-                encryptFile(inputFile, outputFile, encryptionKey);
+                try {
+                    encryptionKey = Integer.parseInt(encryptionKeyString);
+                    encryptFile(inputFile, outputFile, encryptionKey);
+                } catch (NumberFormatException e) {
+                    e.printStackTrace();
+                    continue;
+                }
             }
 
             if (nextInt == 2) {
                 System.out.println("Enter input file, output file and decoding key. Press 'Enter' after each input.");
                 String inputFile = consoleScanner.nextLine();
                 String outputFile = consoleScanner.nextLine();
-                String encryptionKey = consoleScanner.nextLine();
-
-                decodeFile(inputFile, outputFile, encryptionKey);
+                String encryptionKeyString = consoleScanner.nextLine();
+                try {
+                    encryptionKey = Integer.parseInt(encryptionKeyString);
+                    decodeFile(inputFile, outputFile, encryptionKey);
+                } catch (NumberFormatException e) {
+                    e.printStackTrace();
+                    continue;
+                }
             }
 
             if (nextInt == 3) {
@@ -57,12 +71,11 @@ public class Runner {
 
                 statisticsAnalyzer(inputFile, outputFile, refFile, consoleScanner);
             }
-
         }
         consoleScanner.close();
     }
 
-    private static void encryptFile(String inputFile, String outputFile, String encryptionKey) throws IOException {
+    private static void encryptFile(String inputFile, String outputFile, int encryptionKey) throws IOException {
         if (Files.exists(Path.of(Constants.USER_DIR + inputFile))) {
             if (!Files.exists(Path.of(Constants.USER_DIR + outputFile))) {
                 Files.createFile(Path.of(Constants.USER_DIR + outputFile));
@@ -75,7 +88,7 @@ public class Runner {
         try (Scanner fileReader = new Scanner(Files.newBufferedReader(Path.of(Constants.USER_DIR + inputFile)));
              BufferedWriter fileWriter = Files.newBufferedWriter(Path.of(Constants.USER_DIR + outputFile), StandardOpenOption.TRUNCATE_EXISTING)) {
 
-            int encKey = Math.abs(Integer.parseInt(encryptionKey) % Constants.ALPHABET.length);
+            int encKey = Math.abs(encryptionKey % Constants.ALPHABET.length);
             String line;
 
             while (fileReader.hasNextLine()) {
@@ -84,7 +97,7 @@ public class Runner {
                 char[] encryptedChars = new char[chars.length];
                 int alphabetPos = -1, newPos;
 
-                //move over new line.
+                //Encrypting new line.
                 for (int i = 0; i < chars.length; i++) {
                     char iChar = chars[i];
                     //finding symbol in ALPHABET.
@@ -113,7 +126,7 @@ public class Runner {
         }
     }
 
-    private static void decodeFile(String inputFile, String outputFile, String encryptionKey) throws IOException {
+    private static void decodeFile(String inputFile, String outputFile, int encryptionKey) throws IOException {
         if (Files.exists(Path.of(Constants.USER_DIR + inputFile))) {
             if (!Files.exists(Path.of(Constants.USER_DIR + outputFile))) {
                 Files.createFile(Path.of(Constants.USER_DIR + outputFile));
@@ -126,7 +139,7 @@ public class Runner {
         try (Scanner fileReader = new Scanner(Files.newBufferedReader(Path.of(Constants.USER_DIR + inputFile)));
              BufferedWriter fileWriter = Files.newBufferedWriter(Path.of(Constants.USER_DIR + outputFile), StandardOpenOption.TRUNCATE_EXISTING)) {
 
-            int encKey = Math.abs(Integer.parseInt(encryptionKey) % Constants.ALPHABET.length);
+            int encKey = Math.abs(encryptionKey % Constants.ALPHABET.length);
             String line;
 
             while (fileReader.hasNextLine()) {
@@ -135,7 +148,7 @@ public class Runner {
                 char[] decodedChars = new char[chars.length];
                 int alphabetPos = -1, newPos;
 
-                //move over new line.
+                //Decoding new line.
                 for (int i = 0; i < chars.length; i++) {
                     char iChar = chars[i];
                     //finding symbol in ALPHABET.
@@ -180,28 +193,35 @@ public class Runner {
 
         Instant timer = Instant.now();
         long startT = timer.toEpochMilli();
+        //Any possible key.
         int encKey = Constants.ALPHABET.length - 1;
         boolean isEncKeyFound = false;
+        int[] keyCountArray = new int[Constants.ALPHABET.length];
+        //Pattern 'End of sentence. Beginning of sentence'.
+        String regex = "\\.[ ]+[А-ЯЁ]";
+        Pattern pattern = Pattern.compile(regex);
+        //Actual key.
+        int encryptionKey = 0;
 
-        while (encKey >= 0 && !isEncKeyFound) {
-
-            try (Scanner fileReader = new Scanner(Files.newBufferedReader(Path.of(Constants.USER_DIR + inputFile)));
-                 BufferedWriter fileWriter = Files.newBufferedWriter(Path.of(Constants.USER_DIR + outputFile), StandardOpenOption.TRUNCATE_EXISTING)) {
+        //Moving throughout all possible keys.
+        while (encKey >= 0) {
+            try (BufferedReader fileReader = Files.newBufferedReader(Path.of(Constants.USER_DIR + inputFile))) {
 
                 String line;
-                int lineCounter = 0;
+                int lineCounter = 0, patternCounter = 0;
 
-                //Checking first 250 lines of encrypted text.
-                while (lineCounter <= 250 || (fileReader.hasNextLine() && isEncKeyFound)) {
-                    line = fileReader.nextLine();
+                //Decoding first 50 lines of encrypted text.
+                while (lineCounter <= 50) {
+
+                    line = fileReader.readLine();
                     char[] chars = line.toCharArray();
                     char[] decodedChars = new char[chars.length];
                     int alphabetPos = -1, newPos;
 
-                    //move over new line.
+                    //Decoding new line.
                     for (int i = 0; i < chars.length; i++) {
                         char iChar = chars[i];
-                        //finding symbol in ALPHABET.
+                        //Finding symbol in ALPHABET.
                         for (int j = 0; j < Constants.ALPHABET.length; j++) {
                             if (iChar == Constants.ALPHABET[j]) {
                                 newPos = j - encKey;
@@ -220,33 +240,43 @@ public class Runner {
                             alphabetPos = -1;
                         }
                     }
-                    fileWriter.write(decodedChars);
 
-                    if (fileReader.hasNextLine()) {
-                        fileWriter.write("\r\n");
-                    }
-
-                    //Comparing words in decoded line with dictionary.
-                    if (!isEncKeyFound) {
-                        String string = String.valueOf(decodedChars);
-                        String[] strArray = string.split(" ");
-                        for (String s : strArray) {
-                            if ("как".equalsIgnoreCase(s)) {
-                                isEncKeyFound = true;
-                                break;
-                            }
-                        }
+                    line = String.valueOf(decodedChars);
+                    Matcher matcher = pattern.matcher(line);
+                    while (matcher.find()) {
+                        patternCounter++;
                     }
                     lineCounter++;
                 }
+                //Making list of Possible Encryption Key as indexes and Pattern Counter as value.
+                keyCountArray[encKey] = patternCounter;
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
+
+            //Getting the biggest value.
+            int intMaxOfKeys = 0;
+            for (int i : keyCountArray) {
+                if (i > intMaxOfKeys) {
+                    intMaxOfKeys = i;
+                }
+            }
+
+            //Getting index which is Encryption Key.
+            for (int key = 0; key < keyCountArray.length; key++) {
+                if (keyCountArray[key] == intMaxOfKeys) {
+                    encryptionKey = key;
+                    break;
+                }
+            }
             encKey--;
         }
+        decodeFile(inputFile, outputFile, encryptionKey);
+
         timer = Instant.now();
         long stopT = timer.toEpochMilli();
-        System.out.println("Decoded key: " + ++encKey);
+        System.out.println("Decoded key: " + encryptionKey);
         System.out.printf("Time: %.2f sec.\n", (stopT - startT) / 1000.0F);
     }
 
