@@ -27,7 +27,8 @@ public class Runner {
             int encryptionKey;
 
             if (nextInt == 1) {
-                System.out.println("Enter input file, output file and encryption key. Press 'Enter' after each input.");
+                System.out.println("Enter input file, output file ([file name].txt) and encryption key. " +
+                        "Press 'Enter' after each input.");
                 String inputFile = consoleScanner.nextLine();
                 String outputFile = consoleScanner.nextLine();
                 String encryptionKeyString = consoleScanner.nextLine();
@@ -42,7 +43,8 @@ public class Runner {
             }
 
             if (nextInt == 2) {
-                System.out.println("Enter input file, output file and decoding key. Press 'Enter' after each input.");
+                System.out.println("Enter input file, output file ([file name].txt) and decoding key. " +
+                        "Press 'Enter' after each input.");
                 String inputFile = consoleScanner.nextLine();
                 String outputFile = consoleScanner.nextLine();
                 String encryptionKeyString = consoleScanner.nextLine();
@@ -56,7 +58,8 @@ public class Runner {
             }
 
             if (nextInt == 3) {
-                System.out.println("Enter input file and output file. Press 'Enter' after each input.");
+                System.out.println("Enter input file and output file ([file name].txt). " +
+                        "Press 'Enter' after each input.");
                 String inputFile = consoleScanner.nextLine();
                 String outputFile = consoleScanner.nextLine();
 
@@ -64,7 +67,8 @@ public class Runner {
             }
 
             if (nextInt == 4) {
-                System.out.println("Enter input file, output file and reference file. Press 'Enter' after each input.");
+                System.out.println("Enter input file, output file ([file name].txt) and reference file. " +
+                        "Press 'Enter' after each input.");
                 String inputFile = consoleScanner.nextLine();
                 String outputFile = consoleScanner.nextLine();
                 String refFile = consoleScanner.nextLine();
@@ -76,13 +80,16 @@ public class Runner {
     }
 
     private static void encryptFile(String inputFile, String outputFile, int encryptionKey) throws IOException {
-        if (Files.exists(Path.of(Constants.USER_DIR + inputFile))) {
-            if (!Files.exists(Path.of(Constants.USER_DIR + outputFile))) {
-                Files.createFile(Path.of(Constants.USER_DIR + outputFile));
-            }
-        } else {
-            System.out.println("Check input file. It must exist.");
+        if (!Files.exists(Path.of(Constants.USER_DIR + inputFile))) {
+            System.err.println("ERROR. Input file must exist.");
             return;
+        }
+        if (!outputFile.endsWith(".txt")) {
+            System.err.println("ERROR. Output file must be *.txt.");
+            return;
+        }
+        if (!Files.exists(Path.of(Constants.USER_DIR + outputFile))) {
+            Files.createFile(Path.of(Constants.USER_DIR + outputFile));
         }
 
         try (Scanner fileReader = new Scanner(Files.newBufferedReader(Path.of(Constants.USER_DIR + inputFile)));
@@ -127,13 +134,16 @@ public class Runner {
     }
 
     private static void decodeFile(String inputFile, String outputFile, int encryptionKey) throws IOException {
-        if (Files.exists(Path.of(Constants.USER_DIR + inputFile))) {
-            if (!Files.exists(Path.of(Constants.USER_DIR + outputFile))) {
-                Files.createFile(Path.of(Constants.USER_DIR + outputFile));
-            }
-        } else {
-            System.out.println("Check input file. It must exist.");
+        if (!Files.exists(Path.of(Constants.USER_DIR + inputFile))) {
+            System.err.println("ERROR. Input file must exist.");
             return;
+        }
+        if (!outputFile.endsWith(".txt")) {
+            System.err.println("ERROR. Output file name must be *.txt.");
+            return;
+        }
+        if (!Files.exists(Path.of(Constants.USER_DIR + outputFile))) {
+            Files.createFile(Path.of(Constants.USER_DIR + outputFile));
         }
 
         try (Scanner fileReader = new Scanner(Files.newBufferedReader(Path.of(Constants.USER_DIR + inputFile)));
@@ -182,23 +192,26 @@ public class Runner {
     }
 
     private static void bruteForce(String inputFile, String outputFile) throws IOException {
-        if (Files.exists(Path.of(Constants.USER_DIR + inputFile))) {
-            if (!Files.exists(Path.of(Constants.USER_DIR + outputFile))) {
-                Files.createFile(Path.of(Constants.USER_DIR + outputFile));
-            }
-        } else {
-            System.out.println("Check input file. It must exist.");
+        if (!Files.exists(Path.of(Constants.USER_DIR + inputFile))) {
+            System.err.println("ERROR. Input file must exist.");
             return;
+        }
+        if (!outputFile.endsWith(".txt")) {
+            System.err.println("ERROR. Output file name must be *.txt.");
+            return;
+        }
+        if (!Files.exists(Path.of(Constants.USER_DIR + outputFile))) {
+            Files.createFile(Path.of(Constants.USER_DIR + outputFile));
         }
 
         Instant timer = Instant.now();
         long startT = timer.toEpochMilli();
         //Any possible key.
         int encKey = Constants.ALPHABET.length - 1;
-        boolean isEncKeyFound = false;
+        //Array where index is possible encryption key.
         int[] keyCountArray = new int[Constants.ALPHABET.length];
         //Pattern 'End of sentence. Beginning of sentence'.
-        String regex = "\\.[ ]+[А-ЯЁ]";
+        String regex = "[.,][ ]+[А-ЯЁ]";
         Pattern pattern = Pattern.compile(regex);
         //Actual key.
         int encryptionKey = 0;
@@ -208,10 +221,10 @@ public class Runner {
             try (BufferedReader fileReader = Files.newBufferedReader(Path.of(Constants.USER_DIR + inputFile))) {
 
                 String line;
-                int lineCounter = 0, patternCounter = 0;
+                int linesToRead = 50, lineCounter = 0, patternCounter = 0;
 
-                //Decoding first 50 lines of encrypted text.
-                while (lineCounter <= 50) {
+                //Decoding first linesToRead lines of encrypted text.
+                while (lineCounter <= linesToRead && fileReader.ready()) {
 
                     line = fileReader.readLine();
                     char[] chars = line.toCharArray();
@@ -248,14 +261,14 @@ public class Runner {
                     }
                     lineCounter++;
                 }
-                //Making list of Possible Encryption Key as indexes and Pattern Counter as value.
+                //Filling array where index is a key and value is a number of patterns in decoded text.
                 keyCountArray[encKey] = patternCounter;
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
-            //Getting the biggest value.
+            //Getting the biggest number of patterns.
             int intMaxOfKeys = 0;
             for (int i : keyCountArray) {
                 if (i > intMaxOfKeys) {
@@ -263,7 +276,7 @@ public class Runner {
                 }
             }
 
-            //Getting index which is Encryption Key.
+            //Getting index which would be the Encryption Key.
             for (int key = 0; key < keyCountArray.length; key++) {
                 if (keyCountArray[key] == intMaxOfKeys) {
                     encryptionKey = key;
@@ -282,14 +295,17 @@ public class Runner {
 
     private static void statisticsAnalyzer(String inputFile, String outputFile, String refFile, Scanner consoleScanner) throws IOException {
         if (!Files.exists(Path.of(Constants.USER_DIR + inputFile))) {
-            System.out.println("Check input file. It must exist.");
+            System.err.println("ERROR. Input file must exist.");
             return;
         }
         if (!Files.exists(Path.of(Constants.USER_DIR + refFile))) {
-            System.out.println("Check reference (dictionary) file. It must exist.");
+            System.err.println("ERROR. Reference (dictionary) file must exist.");
             return;
         }
-
+        if (!outputFile.endsWith(".txt")) {
+            System.err.println("ERROR. Output file name must be *.txt.");
+            return;
+        }
         if (!Files.exists(Path.of(Constants.USER_DIR + outputFile))) {
             Files.createFile(Path.of(Constants.USER_DIR + outputFile));
         }
@@ -363,21 +379,23 @@ public class Runner {
         System.out.println("-------------------------");
         System.out.println(encMap);*/
 
-        float treshold = 2.0F;
+        //threshold for 'space'.
+        float threshold = 2.0F;
         HashMap<Character, Character> refEncMap = new HashMap<>();
 
         //Finding 'space'.
         Float spaceStat = refMap.get(' ');
         for (Map.Entry<Character, Float> characterFloatEntry : encMap.entrySet()) {
             Float value = characterFloatEntry.getValue();
-            if (Math.abs(value - spaceStat) < treshold) {
+            if (Math.abs(value - spaceStat) < threshold) {
                 refEncMap.put(characterFloatEntry.getKey(), ' ');
                 characterSet.remove(' ');
                 break;
             }
         }
 
-        treshold = 0.01F;
+        //minimum threshold for other symbols.
+        threshold = 0.01F;
         //Making map of characters, reference vs encrypted.
         while (!characterSet.isEmpty()) {
             Iterator<Character> characterIterator = characterSet.iterator();
@@ -386,7 +404,7 @@ public class Runner {
                 Float rF = refMap.get(nextCh);
                 for (Map.Entry<Character, Float> characterFloatEntry : encMap.entrySet()) {
                     Float value = characterFloatEntry.getValue();
-                    if (Math.abs(rF - value) < treshold) {
+                    if (Math.abs(rF - value) < threshold) {
                         if (!refEncMap.containsKey(characterFloatEntry.getKey())) {
                             refEncMap.put(characterFloatEntry.getKey(), nextCh);
                             characterIterator.remove();
@@ -395,7 +413,7 @@ public class Runner {
                     }
                 }
             }
-            treshold = treshold + 0.1F;
+            threshold = threshold + 0.1F;
         }
 
         /*System.out.println("------------------");
@@ -430,9 +448,9 @@ public class Runner {
             char first = 'ф', second = 'ф';
             try (Scanner fileReader = new Scanner(Files.newBufferedReader(Path.of(Constants.USER_DIR + outputFile)))) {
 
-                int lineCounter = 0;
+                int linesToRead = 100, lineCounter = 0;
                 //Printing first 100 lines for review.
-                while (fileReader.hasNext() && lineCounter <= 100) {
+                while (fileReader.hasNext() && lineCounter <= linesToRead) {
                     String nextLine = fileReader.nextLine();
                     System.out.println(nextLine);
                     lineCounter++;
@@ -457,7 +475,7 @@ public class Runner {
                 e.printStackTrace();
             }
 
-            //Writing corrections into temp.txt
+            //Writing corrections into temp.txt. When done moving temp.txt to outputFile.txt.
             try (Scanner fileReader = new Scanner(Files.newBufferedReader(Path.of(Constants.USER_DIR + outputFile)));
                  BufferedWriter tempFileWriter = Files.newBufferedWriter(Path.of(Constants.USER_DIR_TEMP_TXT), StandardOpenOption.TRUNCATE_EXISTING)) {
 
