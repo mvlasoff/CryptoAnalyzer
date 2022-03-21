@@ -7,8 +7,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class BruteForce implements Action{
     @Override
@@ -16,12 +14,12 @@ public class BruteForce implements Action{
         String inputFile = parameters[0];
         String outputFile = parameters[1];
 
-        if (!Files.exists(Path.of(Constants.USER_DIR + inputFile))) {
-            System.err.println("ERROR. Input file must exist.");
+        if (inputFile.isEmpty() || !Files.exists(Path.of(Constants.USER_DIR + inputFile))) {
+            System.err.println("ERROR. Enter valid input file name (input file must exist).");
             return;
         }
         if (!outputFile.endsWith(".txt")) {
-            System.err.println("ERROR. Output file name must be *.txt.");
+            System.err.println("ERROR. Enter valid output file name (output file name must be *.txt).");
             return;
         }
         if (!Files.exists(Path.of(Constants.USER_DIR + outputFile))) {
@@ -40,9 +38,6 @@ public class BruteForce implements Action{
         int encKey = Constants.ALPHABET.length - 1;
         //Array where index is possible encryption key.
         int[] keyCountArray = new int[Constants.ALPHABET.length];
-        //Pattern 'End of sentence. Beginning of sentence'.
-        String regex = "[к][а][к]";
-        Pattern pattern = Pattern.compile(regex);
         //Actual key.
         int encryptionKey = 0;
 
@@ -82,12 +77,9 @@ public class BruteForce implements Action{
                             decodedChars[i] = Constants.ALPHABET[alphabetPos];
                             alphabetPos = -1;
                         }
-                    }
-
-                    line = String.valueOf(decodedChars);
-                    Matcher matcher = pattern.matcher(line);
-                    while (matcher.find()) {
-                        patternCounter++;
+                        if (' ' == decodedChars[i]) {
+                            patternCounter++;
+                        }
                     }
                     lineCounter++;
                 }

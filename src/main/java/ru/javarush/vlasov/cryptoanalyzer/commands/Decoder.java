@@ -24,12 +24,12 @@ public class Decoder implements Action{
             return;
         }
 
-        if (!Files.exists(Path.of(Constants.USER_DIR + inputFile))) {
-            System.err.println("ERROR. Input file must exist.");
+        if (inputFile.isEmpty() || !Files.exists(Path.of(Constants.USER_DIR + inputFile))) {
+            System.err.println("ERROR. Enter valid input file name (input file must exist).");
             return;
         }
         if (!outputFile.endsWith(".txt")) {
-            System.err.println("ERROR. Output file name must be *.txt.");
+            System.err.println("ERROR. Enter valid output file name (output file name must be *.txt).");
             return;
         }
         if (!Files.exists(Path.of(Constants.USER_DIR + outputFile))) {

@@ -20,16 +20,16 @@ public class StatisticsAnalyzer implements Action {
         String outputFile = parameters[1];
         String refFile = parameters[2];
 
-        if (!Files.exists(Path.of(Constants.USER_DIR + inputFile))) {
-            System.err.println("ERROR. Input file must exist.");
+        if (inputFile.isEmpty() || !Files.exists(Path.of(Constants.USER_DIR + inputFile))) {
+            System.err.println("ERROR. Enter valid input file name (input file must exist).");
             return;
         }
-        if (!Files.exists(Path.of(Constants.USER_DIR + refFile))) {
-            System.err.println("ERROR. Reference (dictionary) file must exist.");
+        if (refFile.isEmpty() || !Files.exists(Path.of(Constants.USER_DIR + refFile))) {
+            System.err.println("ERROR. Enter valid reference (dictionary) file name (it must exist).");
             return;
         }
         if (!outputFile.endsWith(".txt")) {
-            System.err.println("ERROR. Output file name must be *.txt.");
+            System.err.println("ERROR. Enter valid output file name (output file name must be *.txt).");
             return;
         }
         if (!Files.exists(Path.of(Constants.USER_DIR + outputFile))) {
