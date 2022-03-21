@@ -41,7 +41,7 @@ public class BruteForce implements Action{
         //Array where index is possible encryption key.
         int[] keyCountArray = new int[Constants.ALPHABET.length];
         //Pattern 'End of sentence. Beginning of sentence'.
-        String regex = "[.,][ ]+[А-ЯЁ]";
+        String regex = "[к][а][к]";
         Pattern pattern = Pattern.compile(regex);
         //Actual key.
         int encryptionKey = 0;
@@ -51,7 +51,7 @@ public class BruteForce implements Action{
             try (BufferedReader fileReader = Files.newBufferedReader(Path.of(Constants.USER_DIR + inputFile))) {
 
                 String line;
-                int linesToRead = 50, lineCounter = 0, patternCounter = 0;
+                int linesToRead = 500, lineCounter = 0, patternCounter = 0;
 
                 //Decoding first linesToRead lines of encrypted text.
                 while (lineCounter <= linesToRead && fileReader.ready()) {
