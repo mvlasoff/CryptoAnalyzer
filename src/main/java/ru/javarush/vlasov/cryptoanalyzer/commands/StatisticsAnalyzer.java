@@ -50,123 +50,121 @@ public class StatisticsAnalyzer implements Action {
             }
         }
 
+        //Any line.
         String line;
+        //Reference file statistics.
         HashMap<Character, Float> refMap = new HashMap<>();
+        //Encrypted file statistics.
         HashMap<Character, Float> encMap = new HashMap<>();
+        //Reference char counter.
         int refCharCount = 0;
+        //Encrypted char counter.
         int encCharCount = 0;
-
-        for (char ch : Constants.ALPHABET) {
-            refMap.put(ch, 0f);
-            encMap.put(ch, 0f);
-        }
-        Set<Character> characterSet = refMap.keySet();
 
         //How many of each symbol in reference text.
         try (BufferedReader referenceFileReade = Files.newBufferedReader(Path.of(Constants.USER_DIR + refFile))) {
-
-            while ((line = referenceFileReade.readLine()) != null) {
-                char[] chars = line.toCharArray();
-
-                for (char c : chars) {
-                    if (characterSet.contains(c)) {
-                        Float i = refMap.get(c);
-                        i++;
-                        refCharCount++;
-                        refMap.put(c, i);
-                    }
+            char oneChar;
+            while (referenceFileReade.ready()) {
+                oneChar = (char) referenceFileReade.read();
+                if (refMap.containsKey(oneChar)) {
+                    Float refValue = refMap.get(oneChar);
+                    refValue++;
+                    refMap.put(oneChar, refValue);
+                } else {
+                    refMap.put(oneChar, 1.0F);
                 }
+                refCharCount++;
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         //How many of each symbol in encrypted text.
-        try (BufferedReader encryptedFileReader = Files.newBufferedReader(Path.of(Constants.USER_DIR + inputFile))) {
-            while ((line = encryptedFileReader.readLine()) != null) {
-                char[] chars = line.toCharArray();
-
-                for (char c : chars) {
-                    if (characterSet.contains(c)) {
-                        Float i = encMap.get(c);
-                        i++;
-                        encCharCount++;
-                        encMap.put(c, i);
-                    }
+        try (BufferedReader encryptedFileReade = Files.newBufferedReader(Path.of(Constants.USER_DIR + inputFile))) {
+            char oneChar;
+            while (encryptedFileReade.ready()) {
+                oneChar = (char) encryptedFileReade.read();
+                if (encMap.containsKey(oneChar)) {
+                    Float encValue = encMap.get(oneChar);
+                    encValue++;
+                    encMap.put(oneChar, encValue);
+                } else {
+                    encMap.put(oneChar, 1.0F);
                 }
+                encCharCount++;
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         //Collecting statistics.
-        for (Character character : characterSet) {
+        for (Character character : refMap.keySet()) {
             Float refF = refMap.get(character);
             refF = refF / refCharCount * 100;
             refMap.put(character, refF);
-
+        }
+        for (Character character : encMap.keySet()) {
             Float encF = encMap.get(character);
             encF = encF / encCharCount * 100;
             encMap.put(character, encF);
         }
 
-        //threshold for 'space'.
-        float threshold = 2.0F;
-        HashMap<Character, Character> refEncMap = new HashMap<>();
-
-        //Finding 'space'.
-        Float spaceStat = refMap.get(' ');
-        for (Map.Entry<Character, Float> characterFloatEntry : encMap.entrySet()) {
-            Float value = characterFloatEntry.getValue();
-            if (Math.abs(value - spaceStat) < threshold) {
-                refEncMap.put(characterFloatEntry.getKey(), ' ');
-                characterSet.remove(' ');
-                break;
+        //Sorting reference map by value.
+        List<Map.Entry<Character, Float>> refList = new ArrayList<>(refMap.entrySet());
+        refList.sort(Map.Entry.comparingByValue(new Comparator<Float>() {
+            @Override
+            public int compare(Float o1, Float o2) {
+                return (int) ((o2 - o1) * 10000);
             }
+        }));
+
+        Map<Character, Float> refMapSorted = new LinkedHashMap<>();
+        for (Map.Entry<Character, Float> entry : refList) {
+            refMapSorted.put(entry.getKey(), entry.getValue());
         }
 
-        //minimum threshold for other symbols.
-        threshold = 0.01F;
-        //Making map of characters, reference vs encrypted.
-        while (!characterSet.isEmpty()) {
-            Iterator<Character> characterIterator = characterSet.iterator();
-            while (characterIterator.hasNext()) {
-                Character nextCh = characterIterator.next();
-                Float rF = refMap.get(nextCh);
-                for (Map.Entry<Character, Float> characterFloatEntry : encMap.entrySet()) {
-                    Float value = characterFloatEntry.getValue();
-                    if (Math.abs(rF - value) < threshold) {
-                        if (!refEncMap.containsKey(characterFloatEntry.getKey())) {
-                            refEncMap.put(characterFloatEntry.getKey(), nextCh);
-                            characterIterator.remove();
-                            break;
-                        }
-                    }
-                }
+        //Sorting encrypted map by value.
+        List<Map.Entry<Character, Float>> encList = new ArrayList<>(encMap.entrySet());
+        encList.sort(Map.Entry.comparingByValue(new Comparator<Float>() {
+            @Override
+            public int compare(Float o1, Float o2) {
+                return (int) ((o2 - o1) * 10000);
             }
-            threshold = threshold + 0.1F;
+        }));
+
+        Map<Character, Float> encMapSorted = new LinkedHashMap<>();
+        for (Map.Entry<Character, Float> entry : encList) {
+            encMapSorted.put(entry.getKey(), entry.getValue());
+        }
+
+        //Reference key array.
+        Object[] refKeyArray = refMapSorted.keySet().toArray();
+        //Encrypted key array.
+        Object[] encKeyArray = encMapSorted.keySet().toArray();
+
+        //Map of encrypted chars - reference chars.
+        HashMap<Character, Character> refEncMap = new HashMap<>();
+        //Creating map encrypted character - reference(dictionary) character.
+        for (int i = 0; i < encKeyArray.length && i < refKeyArray.length; i++) {
+            refEncMap.put((Character) encKeyArray[i], (Character) refKeyArray[i]);
         }
 
         //Reading encrypted file and swapping chars.
-        try (Scanner fileReader = new Scanner(Files.newBufferedReader(Path.of(Constants.USER_DIR + inputFile)));
+        try (BufferedReader fileReader = Files.newBufferedReader(Path.of(Constants.USER_DIR + inputFile));
              BufferedWriter fileWriter = Files.newBufferedWriter(Path.of(Constants.USER_DIR + outputFile), StandardOpenOption.TRUNCATE_EXISTING)) {
 
-            while (fileReader.hasNext()) {
-                line = fileReader.nextLine();
-                char[] chars = line.toCharArray();
+            StringBuilder stringBuilder = new StringBuilder();
 
-                for (int i = 0; i < chars.length; i++) {
-                    Character ch = refEncMap.get(chars[i]);
-                    if (ch != null) {
-                        chars[i] = ch;
-                    }
-                }
-                fileWriter.write(chars);
-
-                if (fileReader.hasNextLine()) {
-                    fileWriter.write("\r\n");
+            while (fileReader.ready()) {
+                char oneChar = (char) fileReader.read();
+                Character decodedChar = refEncMap.get(oneChar);
+                if (decodedChar != null) {
+                    stringBuilder.append(decodedChar);
+                } else {
+                    stringBuilder.append(oneChar);
                 }
             }
+            fileWriter.write(stringBuilder.toString());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -174,13 +172,15 @@ public class StatisticsAnalyzer implements Action {
         //Correction mode.
         while (true) {
             char first = 'ф', second = 'ф';
-            try (Scanner fileReader = new Scanner(Files.newBufferedReader(Path.of(Constants.USER_DIR + outputFile)))) {
+            String str1 = "", str2 = "";
+            try (BufferedReader fileReader = Files.newBufferedReader(Path.of(Constants.USER_DIR + outputFile))) {
 
                 int linesToRead = 100, lineCounter = 0;
+
                 //Printing first 100 lines for review.
-                while (fileReader.hasNext() && lineCounter <= linesToRead) {
-                    String nextLine = fileReader.nextLine();
-                    System.out.println(nextLine);
+                while (fileReader.ready() && lineCounter <= linesToRead) {
+                    line = fileReader.readLine();
+                    System.out.println(line);
                     lineCounter++;
                 }
 
@@ -189,44 +189,64 @@ public class StatisticsAnalyzer implements Action {
 
                         -----------------------------------------
                         This is correction mode. Review text above. Type 2 characters you want to swipe.
-                        Example: if you have 'йункциональныф', then type 'фй' or 'йф' to make 'функциональный'
-                        (or type 'quit' for exit from correction mode).""");
+                        Press 'Enter' after each input.
+                        Example: if you have "йункциональныф", then type 'ф', 'Enter', 'й', 'Enter'
+                        or type 'й', 'Enter, 'ф', 'Enter' to make 'функциональный' (either way works).
+                        For '\\n' or Line Feed type "LF", for '\\r' Carriage Return - "CR", for '\\t' Tab - "TB".
+                        Sometimes LF and CR are swapped (you can notice a blank line between other lines).
+                        To fix type "LF", Enter, "CR", Enter (or "CR", Enter, "LF", Enter).
+                        Type 'quit' for exit from correction mode).""");
 
-                String str = consoleScanner.nextLine();
-                if ("quit".equals(str)) {
+                str1 = consoleScanner.nextLine();
+                if ("quit".equals(str1)) {
                     break;
-                } else if (str != null) {
-                    first = str.charAt(0);
-                    second = str.charAt(1);
                 }
+                str2 = consoleScanner.nextLine();
+                if ("LF".equals(str1)) {
+                    first = '\n';
+                }else if ("CR".equals(str1)) {
+                    first = '\r';
+                } else if ("TB".equals(str1)) {
+                    first = '\t';
+                } else if (!str1.isEmpty()) {
+                    first = str1.charAt(0);
+                } else {
+                    continue;
+                }
+
+                if ("LF".equals(str2)) {
+                    second = '\n';
+                } else if ("CR".equals(str2)) {
+                    second = '\r';
+                } else if ("TB".equals(str2)) {
+                    second = '\t';
+                } else if (!str2.isEmpty()) {
+                    second = str2.charAt(0);
+                } else {
+                    continue;
+                }
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
             //Writing corrections into temp.txt. When done moving temp.txt to outputFile.txt.
-            try (Scanner fileReader = new Scanner(Files.newBufferedReader(Path.of(Constants.USER_DIR + outputFile)));
+            try (BufferedReader fileReader = Files.newBufferedReader(Path.of(Constants.USER_DIR + outputFile));
                  BufferedWriter tempFileWriter = Files.newBufferedWriter(Path.of(Constants.USER_DIR_TEMP_TXT), StandardOpenOption.TRUNCATE_EXISTING)) {
 
-                while (fileReader.hasNext()) {
-                    line = fileReader.nextLine();
-                    char[] chars = line.toCharArray();
-                    char[] changedChars = new char[chars.length];
-
-                    for (int i = 0; i < chars.length; i++) {
-                        if (first == chars[i]) {
-                            changedChars[i] = second;
-                        } else if (second == chars[i]) {
-                            changedChars[i] = first;
-                        } else {
-                            changedChars[i] = chars[i];
-                        }
+                StringBuilder strB = new StringBuilder();
+                while (fileReader.ready()) {
+                    char oneChar = (char) fileReader.read();
+                    if (oneChar == first) {
+                        strB.append(second);
+                    } else if (oneChar == second) {
+                        strB.append(first);
                     }
-                    tempFileWriter.write(changedChars);
-
-                    if (fileReader.hasNextLine()) {
-                        tempFileWriter.write("\r\n");
+                    else {
+                        strB.append(oneChar);
                     }
                 }
+                tempFileWriter.write(strB.toString());
             } catch (IOException e) {
                 e.printStackTrace();
             }
